@@ -13,9 +13,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python_version: '3.9'
+          python-version: '3.9' # 하이픈(-)으로 수정했습니다.
       - name: Install dependencies
-        run: pip install selenium requests pytz webdriver-manager
+        run: |
+          pip install selenium requests pytz webdriver-manager
       - name: Execute script
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
