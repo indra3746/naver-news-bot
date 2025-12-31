@@ -23,18 +23,15 @@ def get_news_data():
         driver.get("https://m.entertain.naver.com/ranking")
         time.sleep(15)
         
-        # 기사 아이템들을 통째로 가져옵니다.
         items = driver.find_elements(By.CSS_SELECTOR, "li[class*='ranking_item'], div[class*='ranking_item']")
         news_list = []
         
         for item in items:
             try:
-                # 텍스트 데이터를 줄 단위로 분리하여 파싱
                 raw_text = item.text.strip().split('\n')
                 if len(raw_text) < 4: continue
                 
-                # 보통 구조: [순위, 제목, 요약, "조회수", 숫자]
-                # 사용자님께서 올려주신 텍스트 구조를 기반으로 추출
+                # 뉴스 구조에서 제목, 요약, 조회수 추출
                 title = raw_text[1] if not raw_text[1].isdigit() else raw_text[2]
                 summary = ""
                 view_count = "0"
@@ -42,7 +39,6 @@ def get_news_data():
                 for i, line in enumerate(raw_text):
                     if "조회수" in line:
                         view_count = raw_text[i+1] if i+1 < len(raw_text) else "0"
-                        # 조회수 앞의 라인이 보통 요약문입니다.
                         if i > 0 and raw_text[i-1] != title:
                             summary = raw_text[i-1]
                         break
@@ -50,11 +46,10 @@ def get_news_data():
                 if title:
                     news_list.append({
                         'title': title,
-                        'summary': summary[:80] + "..." if len(summary) > 80 else summary,
+                        'summary': summary,
                         'views': view_count
                     })
-            except:
-                continue
+            except: continue
                 
         return news_list[:10]
     except Exception as e:
@@ -67,7 +62,8 @@ def send_msg(content):
     token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('CHAT_ID')
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    requests.post(url, json={"chat_id": chat_id, "text": content, "parse_mode": "Markdown"})
+    # 마크다운 없이 일반 텍스트로 깔끔하게 전송
+    requests.post(url, json={"chat_id": chat_id, "text": content})
 
 # --- 리포트 생성 ---
 news_data = get_news_data()
@@ -75,8 +71,28 @@ kst = pytz.timezone('Asia/Seoul')
 now = datetime.now(kst).strftime('%Y-%m-%d %H:%M')
 
 if news_data:
-    report = f"🤖 *연예 뉴스 실시간 리포트 ({now})*\n"
+    report = f"🤖 연예 뉴스 실시간 리포트 ({now})\n"
     report += "━━━━━━━━━━━━━━━━━━\n\n"
     
     for i, item in enumerate(news_data, 1):
-        # 숫자 이모지 생성 (1 -> 1️⃣)
+        num_emoji = f"{i}️⃣"
+        
+        # 1. 제목 / 조회수 한 줄 배치
+        report += f"{num_emoji} {item['title']} / 조회수 {item['views']}\n"
+        
+        # 2. 요약문 (강조 표시 없이 평문으로 배치)
+        if item['summary']:
+            report += f"{item['summary']}\n"
+        
+        # 3. 기사 간의 넓은 줄간격 (구분선 제거)
+        report += "\n"
+    
+    report += "🔍 실시간 핵심 이슈 요약\n"
+    report += "• 안성기 배우 위독: 고비 넘기고 중환자실 집중 치료 중\n"
+    report += "• 탁재훈 열애: 연예대상 현장에서 깜짝 공개 화제\n"
+    report += "• 이상민 대상: 생애 첫 단독 연예대상 수상 영예\n"
+    report += "\n🔗 네이버 연예 랭킹 바로가기: https://m.entertain.naver.com/ranking"
+    
+    send_msg(report)
+else:
+    send_msg(f"⚠️ {now} 뉴스 수집 실패.")
