@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9' # 하이픈(-) 사용 확인
+          python-version: '3.9'
 
       - name: Install dependencies
         run: |
@@ -25,5 +25,5 @@ jobs:
       - name: Execute script
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          CHAT_ID: ${{ secrets.CHAT_ID! }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
         run: python main.py
