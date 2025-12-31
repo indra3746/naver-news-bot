@@ -21,21 +21,37 @@ def get_news():
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
         
-        # 최신 랭킹 페이지 주소
+        # 1. 네이버 연예 랭킹 메인 페이지 접속
         driver.get("https://m.entertain.naver.com/ranking")
-        time.sleep(12) # 페이지가 다 뜰 때까지 충분히 대기
+        time.sleep(15) # 페이지 로딩을 위해 15초 대기
         
-        # 현재 네이버 연예 랭킹 기사 제목을 가져오는 가장 확실한 규칙
-        elements = driver.find_elements(By.CSS_SELECTOR, "a[class*='title'], .tit, .title")
+        # 2. 다양한 기사 제목 패턴을 모두 시도합니다.
+        selectors = [
+            "a[class*='title']", 
+            "div[class*='ranking_item_text'] a", 
+            "span[class*='title']",
+            "strong[class*='title']",
+            ".tit",
+            "a[class*='item_link']"
+        ]
+        
         titles = []
-        for el in elements:
-            t = el.text.strip()
-            if len(t) > 10: # 너무 짧은 제목 제외
-                titles.append(t)
+        for selector in selectors:
+            elements = driver.find_elements(By.CSS_SELECTOR, selector)
+            for el in elements:
+                t = el.text.strip()
+                if len(t) > 10: # 유효한 제목만 수집
+                    titles.append(t)
         
-        unique_titles = list(dict.fromkeys(titles))[:10]
-        print(f"✅ {len(unique_titles)}개의 뉴스를 찾았습니다.")
-        return unique_titles
+        # 중복 제거 후 상위 10개만 추출
+        unique_titles = []
+        for t in titles:
+            if t not in unique_titles:
+                unique_titles.append(t)
+        
+        final_list = unique_titles[:10]
+        print(f"✅ {len(final_list)}개의 뉴스를 찾았습니다.")
+        return final_list
     except Exception as e:
         print(f"❌ 크롤링 에러: {e}")
         return []
@@ -45,29 +61,25 @@ def get_news():
 def send_msg(content):
     token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('CHAT_ID')
-    
-    if not token or not chat_id:
-        print("❌ Secrets 설정 오류!")
-        return
-
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     res = requests.post(url, json={"chat_id": chat_id, "text": content, "parse_mode": "Markdown"})
     print(f"📡 발송 결과: {res.status_code}")
 
 # 실행부
-titles = get_news()
-now = datetime.now(pytz.timezone('Asia/Seoul')).strftime('%Y-%m-%d %H:%M')
+news_list = get_news()
+kst = pytz.timezone('Asia/Seoul')
+now_kst = datetime.now(kst).strftime('%Y-%m-%d %H:%M')
 
-if titles:
-    report = f"🤖 *실시간 연예 랭킹 리포트 ({now})*\n\n"
-    for i, t in enumerate(titles, 1):
-        report += f"{i}위. {t}\n"
+if news_list:
+    report = f"🤖 *실시간 연예 랭킹 리포트 ({now_kst})*\n"
+    report += f"{'='*30}\n\n"
+    for i, title in enumerate(news_list, 1):
+        report += f"{i}위. {title}\n"
     
-    # 현재 시점 연예계 주요 이슈 (2025년 12월 31일 기준)
-    report += "\n🔍 *실시간 핵심 이슈 요약*\n"
-    report += "• 안성기 배우 위독: 식사 중 갑작스러운 심정지 발생, 현재 중환자실 위중\n"
-    report += "• 탁재훈: 'SBS 연예대상' 현장에서 일반인과 열애 사실 전격 공개\n"
-    report += "• 이상민: '미우새' 활약으로 생애 첫 단독 대상 수상 영예\n"
+    report += "\n🔍 *2025년 12월 31일 주요 소식*\n"
+    report += "• 안성기 배우 위독: 식사 중 심정지 발생, 현재 중환자실 집중 치료 중\n"
+    report += "• 탁재훈 열애: 'SBS 연예대상' 현장에서 일반인과 열애 사실 전격 공개\n"
+    report += "• 이상민 대상: '미운 우리 새끼'로 생애 첫 단독 연예대상 수상\n"
     
     send_msg(report)
 else:
