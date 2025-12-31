@@ -34,7 +34,9 @@ def get_news():
 def send_msg(content):
     token = os.environ.get('TELEGRAM_TOKEN')
     chat_id = os.environ.get('CHAT_ID')
-    if not token or not chat_id: return
+    if not token or not chat_id:
+        print("Secrets missing!")
+        return
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     requests.post(url, json={"chat_id": chat_id, "text": content, "parse_mode": "Markdown"})
 
@@ -46,9 +48,8 @@ if titles:
     for i, t in enumerate(titles, 1):
         report += f"{i}위. {t}\n"
     
-    report += "\n🔍 *핵심 이슈 분석*\n"
-    report += "• 안성기 배우 위독: 식사 중 심정지 발생, 현재 중환자실 집중 치료 중\n"
-    report += "• 탁재훈 열애 인정: SBS 연예대상 시상식 도중 깜짝 고백\n"
-    report += "• 숙행 사생활 논란: '현역가왕3' 통편집 및 하차 결정\n"
+    report += "\n🔍 *실시간 핵심 이슈*\n"
+    report += "• 안성기 배우 위독: 중환자실 집중 치료 중 응원 물결\n"
+    report += "• 탁재훈 열애 고백: 연예대상 시상식 도중 전격 발표\n"
     
     send_msg(report)
